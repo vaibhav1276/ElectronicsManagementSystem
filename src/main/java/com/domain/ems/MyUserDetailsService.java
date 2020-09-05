@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import com.domain.ems.exception.ResourceNotFoundException;
 import com.domain.ems.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,20 +33,21 @@ public class MyUserDetailsService implements UserDetailsService {
 	ObjectMapper om = new ObjectMapper();
 
 	@Override
-	public UserDetails loadUserByUsername(String s) throws UsernameNotFoundException {
-		com.domain.ems.models.User user = userRepository.findByUsername(s);
-		try {
-			logger.info("USer Details : " + om.writeValueAsString(user));
-		} catch (JsonProcessingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+		com.domain.ems.models.UserModel.User user = userRepository.findByUsername(username);
+		if (user != null) {
+			try {
+				logger.info("User Details : " + om.writeValueAsString(user));
+			} catch (JsonProcessingException e) {
+				e.printStackTrace();
+			}
+			SimpleGrantedAuthority authority = new SimpleGrantedAuthority(user.getRole());
+			List<SimpleGrantedAuthority> updatedAuthorities = new ArrayList<SimpleGrantedAuthority>();
+			updatedAuthorities.add(authority);
+			return new User(user.getUsername(), user.getPassword(), updatedAuthorities);
 		}
-		logger.info("Before OldAuth");
-		logger.info("After OldAuth");
-		SimpleGrantedAuthority authority = new SimpleGrantedAuthority(user.getRole());
-		List<SimpleGrantedAuthority> updatedAuthorities = new ArrayList<SimpleGrantedAuthority>();
-		updatedAuthorities.add(authority);
-		logger.info("Returning USer");
-		return new User(user.getUsername(), user.getPassword(), updatedAuthorities);
+		else {
+			throw new UsernameNotFoundException("Request User Not Found");
+		}
 	}
 }

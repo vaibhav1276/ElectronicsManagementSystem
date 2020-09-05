@@ -15,70 +15,56 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.domain.ems.MyUserDetailsService;
 import com.domain.ems.exception.ForbiddenException;
-import com.domain.ems.models.AuthenticationRequest;
-import com.domain.ems.models.AuthenticationResponse;
-import com.domain.ems.models.User;
+import com.domain.ems.models.Authentication.AuthenticationRequest;
+import com.domain.ems.models.Authentication.AuthenticationResponse;
+import com.domain.ems.models.UserModel.User;
 import com.domain.ems.repository.UserRepository;
+import com.domain.ems.util.CommonUtil;
 import com.domain.ems.util.JwtUtil;
 
 @RestController
 public class EmsContoller {
-	
+
 	@Autowired
 	private AuthenticationManager authenticationManager;
 
 	@Autowired
 	private JwtUtil jwtTokenUtil;
-	
+
 	@Autowired
 	private UserRepository userRepository;
 
 	@Autowired
 	private MyUserDetailsService userDetailsService;
-	
-	private final org.slf4j.Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    @Autowired
-    private JwtUtil jwtUtil;
-
+	@Autowired
+	private CommonUtil commonUtil;
 
 	@PostMapping("/users")
-	public User createUser( @RequestBody User user,@RequestHeader("Authorization") String authorizationHeader) throws Exception {
-	
-        String username = null;
-        String jwt = null;
+	public User createUser(@RequestBody User user, @RequestHeader("Authorization") String authorizationHeader)
+			throws Exception {
 
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            username = jwtUtil.extractUsername(jwt);
-            logger.info("Username "+username);
-            if(!jwtUtil.decodeJWTForRoles(jwt)) {
-            	throw new ForbiddenException("User dosn't have the required authority to create a user");
-            }
-           
-        }
-
-        return userRepository.save(user);
+		if (commonUtil.validateAdminUserToken(authorizationHeader)) {
+			commonUtil.checkForExistingUser(user.getUsername());
+			return userRepository.save(user);
+		} else {
+			return null;
+		}
 	}
 
 	@PostMapping("/authenticate")
-	public ResponseEntity<?> createAuthenticationToken(@RequestBody AuthenticationRequest authenticationRequest) throws Exception {
+	public ResponseEntity<?> createAuthenticationToken(@RequestBody AuthenticationRequest authenticationRequest)
+			throws Exception {
 
 		try {
-			authenticationManager.authenticate(
-					new UsernamePasswordAuthenticationToken(authenticationRequest.getUsername(), authenticationRequest.getPassword())
-			);
-		}
-		catch (BadCredentialsException e) {
+			authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
+					authenticationRequest.getUsername(), authenticationRequest.getPassword()));
+		} catch (BadCredentialsException e) {
 			throw new Exception("Incorrect username or password", e);
 		}
 
-
-		final UserDetails userDetails = userDetailsService
-				.loadUserByUsername(authenticationRequest.getUsername());
-
+		final UserDetails userDetails = userDetailsService.loadUserByUsername(authenticationRequest.getUsername());
 		final String jwt = jwtTokenUtil.generateToken(userDetails);
-
 		return ResponseEntity.ok(new AuthenticationResponse(jwt));
 	}
 
