@@ -1,23 +1,21 @@
 package com.domain.ems.controller;
 
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.web.authentication.Http403ForbiddenEntryPoint;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
-
 import com.domain.ems.MyUserDetailsService;
-import com.domain.ems.exception.ForbiddenException;
 import com.domain.ems.models.Authentication.AuthenticationRequest;
 import com.domain.ems.models.Authentication.AuthenticationResponse;
 import com.domain.ems.models.UserModel.User;
+import com.domain.ems.models.electonics.Gadgets;
+import com.domain.ems.repository.GadgetRepository;
 import com.domain.ems.repository.UserRepository;
 import com.domain.ems.util.CommonUtil;
 import com.domain.ems.util.JwtUtil;
@@ -33,6 +31,9 @@ public class EmsContoller {
 
 	@Autowired
 	private UserRepository userRepository;
+	
+	@Autowired
+	private GadgetRepository gadgetRepository;
 
 	@Autowired
 	private MyUserDetailsService userDetailsService;
@@ -44,9 +45,20 @@ public class EmsContoller {
 	public User createUser(@RequestBody User user, @RequestHeader("Authorization") String authorizationHeader)
 			throws Exception {
 
-		if (commonUtil.validateAdminUserToken(authorizationHeader)) {
+		if (commonUtil.validateUserTokenRole(authorizationHeader,"Admin")) {
 			commonUtil.checkForExistingUser(user.getUsername());
 			return userRepository.save(user);
+		} else {
+			return null;
+		}
+	}
+	
+	@PostMapping("/addGadget")
+	public Gadgets addGadget(@RequestBody Gadgets gadget, @RequestHeader("Authorization") String authorizationHeader)
+			throws Exception {
+
+		if (commonUtil.validateUserTokenRole(authorizationHeader,"Sales")) {
+			return gadgetRepository.save(gadget);
 		} else {
 			return null;
 		}

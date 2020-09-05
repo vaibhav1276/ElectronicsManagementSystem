@@ -22,69 +22,71 @@ import java.util.function.Function;
 
 @Service
 public class JwtUtil {
-	
+
 	private final org.slf4j.Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private String SECRET_KEY = "secret";
+	private String SECRET_KEY = "secret";
 
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
-    
-    public Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
+	public String extractUsername(String token) {
+		return extractClaim(token, Claims::getSubject);
+	}
 
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-    private Claims extractAllClaims(String token) {
-        return Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token).getBody();
-    }
+	public Date extractExpiration(String token) {
+		return extractClaim(token, Claims::getExpiration);
+	}
 
-    private Boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
+	public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+		final Claims claims = extractAllClaims(token);
+		return claimsResolver.apply(claims);
+	}
 
-    public String generateToken(UserDetails userDetails) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("username", userDetails.getUsername());
-        claims.put("Role", userDetails.getAuthorities());
-        return createToken(claims, userDetails.getUsername());
-    }
+	private Claims extractAllClaims(String token) {
+		return Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token).getBody();
+	}
 
-    private String createToken(Map<String, Object> claims, String subject) {
+	private Boolean isTokenExpired(String token) {
+		return extractExpiration(token).before(new Date());
+	}
 
-        return Jwts.builder().setClaims(claims).setSubject(subject).setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10))
-                .signWith(SignatureAlgorithm.HS256, SECRET_KEY).compact();
-    }
+	public String generateToken(UserDetails userDetails) {
+		Map<String, Object> claims = new HashMap<>();
+		claims.put("username", userDetails.getUsername());
+		claims.put("Role", userDetails.getAuthorities());
+		return createToken(claims, userDetails.getUsername());
+	}
 
-    public Boolean validateToken(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
-    }
-    
-    public boolean decodeJWTForRoles(String jwtToken) throws JsonParseException, JsonMappingException, IOException{
-    	logger.info("Inside Decoder");
-    	java.util.Base64.Decoder decoder = java.util.Base64.getUrlDecoder();
-        String[] parts = jwtToken.split("\\."); // split out the "parts" (header, payload and signature)
+	private String createToken(Map<String, Object> claims, String subject) {
 
-        String headerJson = new String(decoder.decode(parts[0]));
-        String payloadJson = new String(decoder.decode(parts[1]));
-        ObjectMapper om = new ObjectMapper();
-        Token token = om.readValue(payloadJson, Token.class);
-        boolean roleFlag = false;
-        logger.info("token body : " + payloadJson);
-        for (Role role : token.getRole()) {
-        	if(role.getAuthority().equalsIgnoreCase("Admin")){
-        		roleFlag = true;
-        		return roleFlag;
-        	}
-        }
-        //String signatureJson = new String(decoder.decode(parts[2])); 
-        return roleFlag;
-    }
-    
+		return Jwts.builder().setClaims(claims).setSubject(subject).setIssuedAt(new Date(System.currentTimeMillis()))
+				.setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10))
+				.signWith(SignatureAlgorithm.HS256, SECRET_KEY).compact();
+	}
+
+	public Boolean validateToken(String token, UserDetails userDetails) {
+		final String username = extractUsername(token);
+		return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+	}
+
+	public String decodeJWTForRoles(String authToken) throws JsonParseException, JsonMappingException, IOException {
+		logger.info("Inside Decoder");
+		String roleName = null;
+		if (authToken != null && authToken.startsWith("Bearer ")) {
+			String jwtToken = authToken.substring(7);
+			java.util.Base64.Decoder decoder = java.util.Base64.getUrlDecoder();
+			String[] parts = jwtToken.split("\\.");
+			String payloadJson = new String(decoder.decode(parts[1]));
+			ObjectMapper om = new ObjectMapper();
+			Token token = om.readValue(payloadJson, Token.class);
+
+			logger.info("token body : " + payloadJson);
+			for (Role role : token.getRole()) {
+				if (role.getAuthority() != null) {
+					roleName = role.getAuthority();
+					logger.info("roleName  : " + roleName);
+				}
+			}
+		}
+		return roleName;
+	}
+
 }

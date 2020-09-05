@@ -21,22 +21,15 @@ public class CommonUtil {
 	@Autowired
 	private UserRepository userRepository;
 
-	public boolean validateAdminUserToken(String authToken)
+	public boolean validateUserTokenRole(String authToken,String requiredRole)
 			throws ForbiddenException, JsonParseException, JsonMappingException, IOException {
-		String username = null;
-		String jwt = null;
-		boolean roleFlag = false;
-
-		if (authToken != null && authToken.startsWith("Bearer ")) {
-			jwt = authToken.substring(7);
-			username = jwtUtil.extractUsername(jwt);
-			logger.info("Username " + username);
-			if (!jwtUtil.decodeJWTForRoles(jwt)) {
-				throw new ForbiddenException("User dosn't have the required authority for this operation");
-			} else {
-				roleFlag = true;
-			}
-
+		boolean roleFlag= false;
+		
+		String roleName = jwtUtil.decodeJWTForRoles(authToken);
+		if(roleName.equalsIgnoreCase(requiredRole)) {
+			roleFlag = true ;
+		} else {
+			throw new ForbiddenException("User doesn't have the required role for this operation");
 		}
 		return roleFlag;
 	}
