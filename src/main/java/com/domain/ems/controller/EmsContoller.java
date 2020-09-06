@@ -1,18 +1,23 @@
 package com.domain.ems.controller;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
+import java.util.zip.ZipOutputStream;
 
 import javax.validation.Valid;
 
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -26,6 +31,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+
 import com.domain.ems.MyUserDetailsService;
 import com.domain.ems.exception.ForbiddenException;
 import com.domain.ems.exception.ResourceNotFoundException;
@@ -37,10 +44,14 @@ import com.domain.ems.models.electonics.Gadgets;
 import com.domain.ems.repository.AccessoriesRepository;
 import com.domain.ems.repository.GadgetRepository;
 import com.domain.ems.repository.UserRepository;
+import com.domain.ems.util.AccessoryService;
 import com.domain.ems.util.CommonUtil;
 import com.domain.ems.util.JwtUtil;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
@@ -67,7 +78,11 @@ public class EmsContoller {
 	@Autowired
 	private CommonUtil commonUtil;
 
+	@Autowired
+	private AccessoryService accessoryService;
+
 	ObjectMapper om = new ObjectMapper();
+	private final org.slf4j.Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	// User APIs
 	@PostMapping("/users")
@@ -250,6 +265,26 @@ public class EmsContoller {
 		 */ else {
 			throw new ForbiddenException("User doesn't have the required role for this operation");
 		}
+	}
+
+	@GetMapping("/accessories/stream")
+	public ResponseEntity<StreamingResponseBody> getAllAccessoriesStream(
+			@RequestHeader("Authorization") String authorizationHeader)
+			throws JsonParseException, JsonMappingException, ForbiddenException, IOException {
+
+		if (commonUtil.validateUserTokenRole(authorizationHeader, "Sales")
+				|| commonUtil.validateUserTokenRole(authorizationHeader, "User")) {
+
+			StreamingResponseBody stream = this::writeTo;
+		
+			return new ResponseEntity<>(stream, HttpStatus.OK);
+		} else {
+			throw new ForbiddenException("User doesn't have the required role for this operation");
+		}
+	}
+
+	private void writeTo(OutputStream outputStream) {
+		accessoryService.writeToOutputStream(outputStream);
 	}
 
 	@GetMapping("/accessories/{id}")
