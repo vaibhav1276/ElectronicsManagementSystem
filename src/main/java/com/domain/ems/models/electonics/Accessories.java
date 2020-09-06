@@ -10,9 +10,13 @@ import javax.persistence.Table;
 
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 @Entity
 @Table(name = "accessories")
 @EntityListeners(AuditingEntityListener.class)
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class Accessories {
 
 	private long id;
@@ -22,11 +26,11 @@ public class Accessories {
 	private String brand;
 	private long price;
 	private long inventory;
-
+	@JsonProperty("inventory")
 	public long getInventory() {
 		return inventory;
 	}
-
+	@JsonProperty("inventory")
 	public void setInventory(long inventory) {
 		this.inventory = inventory;
 	}

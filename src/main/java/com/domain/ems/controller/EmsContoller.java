@@ -1,6 +1,7 @@
 package com.domain.ems.controller;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.Map;
 
 import javax.validation.Valid;
 
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,7 +38,11 @@ import com.domain.ems.repository.UserRepository;
 import com.domain.ems.util.CommonUtil;
 import com.domain.ems.util.JwtUtil;
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import ch.qos.logback.classic.Logger;
 
 @RestController
 public class EmsContoller {
@@ -62,6 +68,9 @@ public class EmsContoller {
 	@Autowired
 	private CommonUtil commonUtil;
 
+	ObjectMapper om = new ObjectMapper();
+	private final org.slf4j.Logger logger = LoggerFactory.getLogger(this.getClass());
+
 	// User APIs
 	@PostMapping("/users")
 	public User createUser(@RequestBody User user, @RequestHeader("Authorization") String authorizationHeader)
@@ -71,35 +80,49 @@ public class EmsContoller {
 			commonUtil.checkForExistingUser(user.getUsername());
 			return userRepository.save(user);
 		} else {
-			return null;
+			throw new ForbiddenException("User doesn't have the required role for this operation");
 		}
 	}
 
 	@GetMapping("/users")
-	public List<User> getAllUsers() {
-		return (List<User>) userRepository.findAll();
+	public List<User> getAllUsers(@RequestHeader("Authorization") String authorizationHeader)
+			throws JsonParseException, JsonMappingException, ForbiddenException, IOException {
+		if (commonUtil.validateUserTokenRole(authorizationHeader, "Admin")) {
+			return (List<User>) userRepository.findAll();
+		} else {
+			throw new ForbiddenException("User doesn't have the required role for this operation");
+		}
+
 	}
 
 	@GetMapping("/users/{id}")
-	public ResponseEntity<User> getUserById(@PathVariable(value = "id") Long userId) throws ResourceNotFoundException {
-		User user = userRepository.findById(userId)
-				.orElseThrow(() -> new ResourceNotFoundException("User not found :: " + userId));
-		return ResponseEntity.ok().body(user);
+	public ResponseEntity<User> getUserById(@PathVariable(value = "id") Long userId,
+			@RequestHeader("Authorization") String authorizationHeader) throws ResourceNotFoundException,
+			JsonParseException, JsonMappingException, ForbiddenException, IOException {
+		if (commonUtil.validateUserTokenRole(authorizationHeader, "Admin")) {
+			User user = userRepository.findById(userId)
+					.orElseThrow(() -> new ResourceNotFoundException("User not found :: " + userId));
+			return ResponseEntity.ok().body(user);
+		} else {
+			throw new ForbiddenException("User doesn't have the required role for this operation");
+		}
+
 	}
 
 	@DeleteMapping("/users/{id}")
 	public Map<String, Boolean> deleteUser(@PathVariable(value = "id") Long userId,
 			@RequestHeader("Authorization") String authorizationHeader) throws ResourceNotFoundException,
 			JsonParseException, JsonMappingException, ForbiddenException, IOException {
-		User user = userRepository.findById(userId)
-				.orElseThrow(() -> new ResourceNotFoundException("User not found :: " + userId));
+
 		if (commonUtil.validateUserTokenRole(authorizationHeader, "Admin")) {
+			User user = userRepository.findById(userId)
+					.orElseThrow(() -> new ResourceNotFoundException("User not found :: " + userId));
 			userRepository.delete(user);
 			Map<String, Boolean> response = new HashMap<>();
 			response.put("deleted", Boolean.TRUE);
 			return response;
 		} else {
-			return null;
+			throw new ForbiddenException("User doesn't have the required role for this operation");
 		}
 	}
 
@@ -111,26 +134,32 @@ public class EmsContoller {
 		if (commonUtil.validateUserTokenRole(authorizationHeader, "Sales")) {
 			return gadgetRepository.save(gadget);
 		} else {
-			return null;
+			throw new ForbiddenException("User doesn't have the required role for this operation");
 		}
 	}
 
 	@GetMapping("/gadgets")
-	public List<Gadgets> getAllGadgets() {
-		return (List<Gadgets>) gadgetRepository.findAll();
+	public List<Gadgets> getAllGadgets(@RequestHeader("Authorization") String authorizationHeader)
+			throws JsonParseException, JsonMappingException, ForbiddenException, IOException {
+		if (commonUtil.validateUserTokenRole(authorizationHeader, "Sales")) {
+			return (List<Gadgets>) gadgetRepository.findAll();
+		} else {
+			throw new ForbiddenException("User doesn't have the required role for this operation");
+		}
+
 	}
 
 	@GetMapping("/gadgets/{id}")
-	public ResponseEntity<Gadgets> getGadgetById(@PathVariable(value = "id") Long gadgetId)
-			throws ResourceNotFoundException {
+	public ResponseEntity<Gadgets> getGadgetById(@PathVariable(value = "id") Long gadgetId,
+			@RequestHeader("Authorization") String authorizationHeader) throws ResourceNotFoundException {
 		Gadgets gadgets = gadgetRepository.findById(gadgetId)
 				.orElseThrow(() -> new ResourceNotFoundException("Gadget not found :: " + gadgetId));
 		return ResponseEntity.ok().body(gadgets);
 	}
+
 	@PatchMapping("/gadgets/{id}")
 	public ResponseEntity<Gadgets> updateGadget(@PathVariable(value = "id") Long gadgetId,
-			@Valid @RequestBody Gadgets gadgetDetails,
-			@RequestHeader("Authorization") String authorizationHeader)
+			@Valid @RequestBody Gadgets gadgetDetails, @RequestHeader("Authorization") String authorizationHeader)
 			throws ResourceNotFoundException, JsonParseException, JsonMappingException, IOException {
 		Gadgets gadgets = gadgetRepository.findById(gadgetId)
 				.orElseThrow(() -> new ResourceNotFoundException("Gadget not found :: " + gadgetId));
@@ -160,41 +189,70 @@ public class EmsContoller {
 	public Map<String, Boolean> deleteGadget(@PathVariable(value = "id") Long gadgetId,
 			@RequestHeader("Authorization") String authorizationHeader) throws ResourceNotFoundException,
 			JsonParseException, JsonMappingException, ForbiddenException, IOException {
-		Gadgets gadgets = gadgetRepository.findById(gadgetId)
-				.orElseThrow(() -> new ResourceNotFoundException("Gadgets not found :: " + gadgetId));
 		if (commonUtil.validateUserTokenRole(authorizationHeader, "Sales")) {
+			Gadgets gadgets = gadgetRepository.findById(gadgetId)
+					.orElseThrow(() -> new ResourceNotFoundException("Gadgets not found :: " + gadgetId));
 			gadgetRepository.delete(gadgets);
 			Map<String, Boolean> response = new HashMap<>();
 			response.put("deleted", Boolean.TRUE);
 			return response;
 		} else {
-			return null;
+			throw new ForbiddenException("User doesn't have the required role for this operation");
 		}
 	}
 
 	// Accessories APIs
-	@PostMapping("/addAccessory")
+	@PostMapping("/accessory")
 	public Accessories addAccessory(@RequestBody Accessories accessories,
 			@RequestHeader("Authorization") String authorizationHeader) throws Exception {
 
 		if (commonUtil.validateUserTokenRole(authorizationHeader, "Sales")) {
 			return accessoriesRepository.save(accessories);
 		} else {
-			return null;
+			throw new ForbiddenException("User doesn't have the required role for this operation");
 		}
 	}
 
 	@GetMapping("/accessories")
-	public List<Accessories> getAllAccessories() {
-		return (List<Accessories>) accessoriesRepository.findAll();
+	public List<Accessories> getAllAccessories(@RequestHeader("Authorization") String authorizationHeader)
+			throws JsonParseException, JsonMappingException, ForbiddenException, IOException {
+
+		if (commonUtil.validateUserTokenRole(authorizationHeader, "Sales")
+				 || commonUtil.validateUserTokenRole(authorizationHeader, "User")) {
+			return (List<Accessories>) accessoriesRepository.findAll();
+		} 
+		/*
+		 * else if (commonUtil.validateUserTokenRole(authorizationHeader, "User")) {
+		 * List<Accessories> accessoriesList = (List<Accessories>)
+		 * accessoriesRepository.findAll(); List<Accessories> finalList = new
+		 * ArrayList<>(); for (Accessories accessory : accessoriesList) { Accessories
+		 * updatedAccessory = new Accessories(); String transformedJson =
+		 * commonUtil.transformJson("transformDetails.json",
+		 * om.writeValueAsString(accessory)); logger.info(transformedJson);
+		 * updatedAccessory = om.readValue(transformedJson, Accessories.class);
+		 * logger.info("Converted JSON " + om.writeValueAsString(updatedAccessory));
+		 * finalList.add(updatedAccessory);
+		 * 
+		 * }
+		 * 
+		 * return finalList; }
+		 */ else {
+			throw new ForbiddenException("User doesn't have the required role for this operation");
+		}
 	}
 
 	@GetMapping("/accessories/{id}")
-	public ResponseEntity<Accessories> getAccessoryById(@PathVariable(value = "id") Long accId)
-			throws ResourceNotFoundException {
-		Accessories accessories = accessoriesRepository.findById(accId)
-				.orElseThrow(() -> new ResourceNotFoundException("Accessory not found :: " + accId));
-		return ResponseEntity.ok().body(accessories);
+	public ResponseEntity<Accessories> getAccessoryById(@PathVariable(value = "id") Long accId,
+			@RequestHeader("Authorization") String authorizationHeader) throws ResourceNotFoundException,
+			JsonParseException, JsonMappingException, ForbiddenException, IOException {
+
+		if (commonUtil.validateUserTokenRole(authorizationHeader, "Sales")) {
+			Accessories accessories = accessoriesRepository.findById(accId)
+					.orElseThrow(() -> new ResourceNotFoundException("Accessory not found :: " + accId));
+			return ResponseEntity.ok().body(accessories);
+		} else {
+			throw new ForbiddenException("User doesn't have the required role for this operation");
+		}
 	}
 
 	@PatchMapping("/accessories/{id}")
@@ -238,7 +296,7 @@ public class EmsContoller {
 			response.put("deleted", Boolean.TRUE);
 			return response;
 		} else {
-			return null;
+			throw new ForbiddenException("User doesn't have the required role for this operation");
 		}
 	}
 

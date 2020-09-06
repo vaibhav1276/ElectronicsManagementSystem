@@ -9,9 +9,12 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 @Entity
 @Table(name = "gadgets")
 @EntityListeners(AuditingEntityListener.class)
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class Gadgets {
 	
 	private long id;
