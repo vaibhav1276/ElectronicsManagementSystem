@@ -1,11 +1,21 @@
 package com.domain.ems.models.electonics;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
+import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.EntityListeners;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.ManyToMany;
+import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -26,14 +36,9 @@ public class Accessories {
 	private String brand;
 	private long price;
 	private long inventory;
-	@JsonProperty("inventory")
-	public long getInventory() {
-		return inventory;
-	}
-	@JsonProperty("inventory")
-	public void setInventory(long inventory) {
-		this.inventory = inventory;
-	}
+
+	
+	private Set<Gadgets> gadgets= new HashSet();
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
@@ -43,6 +48,25 @@ public class Accessories {
 
 	public void setId(long id) {
 		this.id = id;
+	}
+
+	@ManyToOne(targetEntity = Gadgets.class ,cascade = CascadeType.ALL )
+	public Set<Gadgets> getGadgets() {
+		return gadgets;
+	}
+
+	public void setGadgets(Set<Gadgets> gadgets) {
+		this.gadgets = gadgets;
+	}
+
+	@JsonProperty("inventory")
+	public long getInventory() {
+		return inventory;
+	}
+
+	@JsonProperty("inventory")
+	public void setInventory(long inventory) {
+		this.inventory = inventory;
 	}
 
 	public String getName() {

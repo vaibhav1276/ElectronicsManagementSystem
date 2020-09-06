@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.validation.Valid;
 
@@ -218,9 +220,9 @@ public class EmsContoller {
 			throws JsonParseException, JsonMappingException, ForbiddenException, IOException {
 
 		if (commonUtil.validateUserTokenRole(authorizationHeader, "Sales")
-				 || commonUtil.validateUserTokenRole(authorizationHeader, "User")) {
+				|| commonUtil.validateUserTokenRole(authorizationHeader, "User")) {
 			return (List<Accessories>) accessoriesRepository.findAll();
-		} 
+		}
 		/*
 		 * else if (commonUtil.validateUserTokenRole(authorizationHeader, "User")) {
 		 * List<Accessories> accessoriesList = (List<Accessories>)
@@ -298,6 +300,51 @@ public class EmsContoller {
 		} else {
 			throw new ForbiddenException("User doesn't have the required role for this operation");
 		}
+	}
+
+	@PatchMapping("/linkGadgetAccessory/{gadgetId}/{accessoryId}")
+	public ResponseEntity<Gadgets> linkGadgetAccessory(@PathVariable(value = "gadgetId") Long gadgetId,
+			@PathVariable(value = "accessoryId") Long accessoryId,
+			@RequestHeader("Authorization") String authorizationHeader)
+			throws ResourceNotFoundException, JsonParseException, JsonMappingException, IOException, ForbiddenException {
+
+		String roleName = jwtTokenUtil.decodeJWTForRoles(authorizationHeader);
+		if (roleName.equalsIgnoreCase("Sales")) {
+			Gadgets gadgets = gadgetRepository.findById(gadgetId)
+					.orElseThrow(() -> new ResourceNotFoundException("Gadget not found :: " + gadgetId));
+			Accessories accessories = accessoriesRepository.findById(accessoryId)
+					.orElseThrow(() -> new ResourceNotFoundException("Accessory not found :: " + accessoryId));
+			Set<Accessories> accList = new HashSet<>();
+			accList.add(accessories);
+			gadgets.setAccessories(accList);
+			gadgetRepository.save(gadgets);
+			return ResponseEntity.ok(gadgets);
+		} else {
+			throw new ForbiddenException("User doesn't have the required role for this operation");
+		}
+
+	}
+	@PatchMapping("/delinkGadgetAccessory/{gadgetId}/{accessoryId}")
+	public ResponseEntity<Gadgets> delinkGadgetAccessory(@PathVariable(value = "gadgetId") Long gadgetId,
+			@PathVariable(value = "accessoryId") Long accessoryId,
+			@RequestHeader("Authorization") String authorizationHeader)
+			throws ResourceNotFoundException, JsonParseException, JsonMappingException, IOException, ForbiddenException {
+
+		String roleName = jwtTokenUtil.decodeJWTForRoles(authorizationHeader);
+		if (roleName.equalsIgnoreCase("Sales")) {
+			Gadgets gadgets = gadgetRepository.findById(gadgetId)
+					.orElseThrow(() -> new ResourceNotFoundException("Gadget not found :: " + gadgetId));
+			for (Accessories accessories : gadgets.getAccessories()) {
+				if(accessories.getId()==accessoryId) {
+					gadgets.getAccessories().remove(accessories);
+				}
+			}
+			gadgetRepository.save(gadgets);
+			return ResponseEntity.ok(gadgets);
+		} else {
+			throw new ForbiddenException("User doesn't have the required role for this operation");
+		}
+
 	}
 
 	// Authenticate API
