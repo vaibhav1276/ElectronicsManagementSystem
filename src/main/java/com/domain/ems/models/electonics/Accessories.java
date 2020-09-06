@@ -1,20 +1,14 @@
 package com.domain.ems.models.electonics;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
-import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.EntityListeners;
-import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
@@ -38,7 +32,7 @@ public class Accessories {
 	private long inventory;
 
 	
-	private Set<Gadgets> gadgets= new HashSet();
+	private Set<Gadgets> gadgets;
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)

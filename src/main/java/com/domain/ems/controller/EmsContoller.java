@@ -1,13 +1,12 @@
 package com.domain.ems.controller;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import javax.validation.Valid;
 
@@ -25,6 +24,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.domain.ems.MyUserDetailsService;
 import com.domain.ems.exception.ForbiddenException;
@@ -40,11 +40,8 @@ import com.domain.ems.repository.UserRepository;
 import com.domain.ems.util.CommonUtil;
 import com.domain.ems.util.JwtUtil;
 import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import ch.qos.logback.classic.Logger;
 
 @RestController
 public class EmsContoller {
@@ -71,7 +68,6 @@ public class EmsContoller {
 	private CommonUtil commonUtil;
 
 	ObjectMapper om = new ObjectMapper();
-	private final org.slf4j.Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	// User APIs
 	@PostMapping("/users")
@@ -216,12 +212,25 @@ public class EmsContoller {
 	}
 
 	@GetMapping("/accessories")
-	public List<Accessories> getAllAccessories(@RequestHeader("Authorization") String authorizationHeader)
+	public List<Accessories> getAllAccessories(@RequestHeader("Authorization") String authorizationHeader,
+			@RequestParam("limit") long limit, @RequestParam("offset") long offset)
 			throws JsonParseException, JsonMappingException, ForbiddenException, IOException {
 
 		if (commonUtil.validateUserTokenRole(authorizationHeader, "Sales")
 				|| commonUtil.validateUserTokenRole(authorizationHeader, "User")) {
-			return (List<Accessories>) accessoriesRepository.findAll();
+			List<Accessories> accessories = (List<Accessories>) accessoriesRepository.findAll();
+			int offsetInt = (int) offset;
+			int limitInt = (int) limit;
+			if (offsetInt >= 0 && limitInt > 0) {
+				if (offsetInt + limitInt > accessories.size()) {
+					return accessories;
+				} else {
+					List<Accessories> accessoriesSubList = accessories.subList(offsetInt, offsetInt + limitInt);
+					return accessoriesSubList;
+				}
+			} else {
+				return accessories;
+			}
 		}
 		/*
 		 * else if (commonUtil.validateUserTokenRole(authorizationHeader, "User")) {
@@ -305,8 +314,8 @@ public class EmsContoller {
 	@PatchMapping("/linkGadgetAccessory/{gadgetId}/{accessoryId}")
 	public ResponseEntity<Gadgets> linkGadgetAccessory(@PathVariable(value = "gadgetId") Long gadgetId,
 			@PathVariable(value = "accessoryId") Long accessoryId,
-			@RequestHeader("Authorization") String authorizationHeader)
-			throws ResourceNotFoundException, JsonParseException, JsonMappingException, IOException, ForbiddenException {
+			@RequestHeader("Authorization") String authorizationHeader) throws ResourceNotFoundException,
+			JsonParseException, JsonMappingException, IOException, ForbiddenException {
 
 		String roleName = jwtTokenUtil.decodeJWTForRoles(authorizationHeader);
 		if (roleName.equalsIgnoreCase("Sales")) {
@@ -324,18 +333,19 @@ public class EmsContoller {
 		}
 
 	}
+
 	@PatchMapping("/delinkGadgetAccessory/{gadgetId}/{accessoryId}")
 	public ResponseEntity<Gadgets> delinkGadgetAccessory(@PathVariable(value = "gadgetId") Long gadgetId,
 			@PathVariable(value = "accessoryId") Long accessoryId,
-			@RequestHeader("Authorization") String authorizationHeader)
-			throws ResourceNotFoundException, JsonParseException, JsonMappingException, IOException, ForbiddenException {
+			@RequestHeader("Authorization") String authorizationHeader) throws ResourceNotFoundException,
+			JsonParseException, JsonMappingException, IOException, ForbiddenException {
 
 		String roleName = jwtTokenUtil.decodeJWTForRoles(authorizationHeader);
 		if (roleName.equalsIgnoreCase("Sales")) {
 			Gadgets gadgets = gadgetRepository.findById(gadgetId)
 					.orElseThrow(() -> new ResourceNotFoundException("Gadget not found :: " + gadgetId));
 			for (Accessories accessories : gadgets.getAccessories()) {
-				if(accessories.getId()==accessoryId) {
+				if (accessories.getId() == accessoryId) {
 					gadgets.getAccessories().remove(accessories);
 				}
 			}
