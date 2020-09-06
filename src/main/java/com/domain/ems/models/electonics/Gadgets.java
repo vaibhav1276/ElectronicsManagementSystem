@@ -20,7 +20,14 @@ public class Gadgets {
 	private String category;
 	private String brand;
 	private long price;
+	private long inventory;
 	
+	public long getInventory() {
+		return inventory;
+	}
+	public void setInventory(long inventory) {
+		this.inventory = inventory;
+	}
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	public long getId() {

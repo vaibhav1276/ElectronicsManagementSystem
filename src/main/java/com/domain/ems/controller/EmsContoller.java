@@ -1,9 +1,12 @@
 package com.domain.ems.controller;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +16,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -75,15 +79,13 @@ public class EmsContoller {
 	public List<User> getAllUsers() {
 		return (List<User>) userRepository.findAll();
 	}
-	
+
 	@GetMapping("/users/{id}")
-	public ResponseEntity<User> getUserById(
-			@PathVariable(value = "id") Long userId) throws ResourceNotFoundException {
+	public ResponseEntity<User> getUserById(@PathVariable(value = "id") Long userId) throws ResourceNotFoundException {
 		User user = userRepository.findById(userId)
-        .orElseThrow(() -> new ResourceNotFoundException("User not found :: " + userId));
+				.orElseThrow(() -> new ResourceNotFoundException("User not found :: " + userId));
 		return ResponseEntity.ok().body(user);
 	}
-
 
 	@DeleteMapping("/users/{id}")
 	public Map<String, Boolean> deleteUser(@PathVariable(value = "id") Long userId,
@@ -117,13 +119,41 @@ public class EmsContoller {
 	public List<Gadgets> getAllGadgets() {
 		return (List<Gadgets>) gadgetRepository.findAll();
 	}
-	
+
 	@GetMapping("/gadgets/{id}")
-	public ResponseEntity<Gadgets> getGadgetById(
-			@PathVariable(value = "id") Long gadgetId) throws ResourceNotFoundException {
+	public ResponseEntity<Gadgets> getGadgetById(@PathVariable(value = "id") Long gadgetId)
+			throws ResourceNotFoundException {
 		Gadgets gadgets = gadgetRepository.findById(gadgetId)
-        .orElseThrow(() -> new ResourceNotFoundException("Gadget not found :: " + gadgetId));
+				.orElseThrow(() -> new ResourceNotFoundException("Gadget not found :: " + gadgetId));
 		return ResponseEntity.ok().body(gadgets);
+	}
+	@PatchMapping("/gadgets/{id}")
+	public ResponseEntity<Gadgets> updateGadget(@PathVariable(value = "id") Long gadgetId,
+			@Valid @RequestBody Gadgets gadgetDetails,
+			@RequestHeader("Authorization") String authorizationHeader)
+			throws ResourceNotFoundException, JsonParseException, JsonMappingException, IOException {
+		Gadgets gadgets = gadgetRepository.findById(gadgetId)
+				.orElseThrow(() -> new ResourceNotFoundException("Gadget not found :: " + gadgetId));
+
+		String roleName = jwtTokenUtil.decodeJWTForRoles(authorizationHeader);
+		if (roleName.equalsIgnoreCase("Sales")) {
+			if (gadgetDetails.getBrand() != null) {
+				gadgets.setBrand(gadgetDetails.getBrand());
+			}
+			if (gadgetDetails.getCategory() != null) {
+				gadgets.setCategory(gadgetDetails.getCategory());
+			}
+			if (gadgetDetails.getName() != null) {
+				gadgets.setName(gadgetDetails.getName());
+			}
+			gadgets.setPrice(gadgetDetails.getPrice());
+			gadgets.setInventory(gadgetDetails.getInventory());
+		} else if (roleName.equalsIgnoreCase("Admin")) {
+			gadgets.setInventory(gadgetDetails.getInventory());
+		}
+
+		final Gadgets updatedGadgets = gadgetRepository.save(gadgets);
+		return ResponseEntity.ok(updatedGadgets);
 	}
 
 	@DeleteMapping("/gadget/{id}")
@@ -132,7 +162,7 @@ public class EmsContoller {
 			JsonParseException, JsonMappingException, ForbiddenException, IOException {
 		Gadgets gadgets = gadgetRepository.findById(gadgetId)
 				.orElseThrow(() -> new ResourceNotFoundException("Gadgets not found :: " + gadgetId));
-		if (commonUtil.validateUserTokenRole(authorizationHeader, "Admin")) {
+		if (commonUtil.validateUserTokenRole(authorizationHeader, "Sales")) {
 			gadgetRepository.delete(gadgets);
 			Map<String, Boolean> response = new HashMap<>();
 			response.put("deleted", Boolean.TRUE);
@@ -158,22 +188,51 @@ public class EmsContoller {
 	public List<Accessories> getAllAccessories() {
 		return (List<Accessories>) accessoriesRepository.findAll();
 	}
-	
+
 	@GetMapping("/accessories/{id}")
-	public ResponseEntity<Accessories> getAccessoryById(
-			@PathVariable(value = "id") Long accId) throws ResourceNotFoundException {
+	public ResponseEntity<Accessories> getAccessoryById(@PathVariable(value = "id") Long accId)
+			throws ResourceNotFoundException {
 		Accessories accessories = accessoriesRepository.findById(accId)
-        .orElseThrow(() -> new ResourceNotFoundException("Accessory not found :: " + accId));
+				.orElseThrow(() -> new ResourceNotFoundException("Accessory not found :: " + accId));
 		return ResponseEntity.ok().body(accessories);
 	}
 
-	@DeleteMapping("/gadget/{id}")
+	@PatchMapping("/accessories/{id}")
+	public ResponseEntity<Accessories> updateAccessories(@PathVariable(value = "id") Long accId,
+			@Valid @RequestBody Accessories accessoriesDetails,
+			@RequestHeader("Authorization") String authorizationHeader)
+			throws ResourceNotFoundException, JsonParseException, JsonMappingException, IOException {
+		Accessories accessories = accessoriesRepository.findById(accId)
+				.orElseThrow(() -> new ResourceNotFoundException("Accessory not found :: " + accId));
+
+		String roleName = jwtTokenUtil.decodeJWTForRoles(authorizationHeader);
+		if (roleName.equalsIgnoreCase("Sales")) {
+			if (accessoriesDetails.getBrand() != null) {
+				accessories.setBrand(accessoriesDetails.getBrand());
+			}
+			if (accessoriesDetails.getCategory() != null) {
+				accessories.setCategory(accessoriesDetails.getCategory());
+			}
+			if (accessoriesDetails.getName() != null) {
+				accessories.setName(accessoriesDetails.getName());
+			}
+			accessories.setPrice(accessoriesDetails.getPrice());
+			accessories.setInventory(accessoriesDetails.getInventory());
+		} else if (roleName.equalsIgnoreCase("Admin")) {
+			accessories.setInventory(accessoriesDetails.getInventory());
+		}
+
+		final Accessories updatedAccessory = accessoriesRepository.save(accessories);
+		return ResponseEntity.ok(updatedAccessory);
+	}
+
+	@DeleteMapping("/accessories/{id}")
 	public Map<String, Boolean> deleteAccessories(@PathVariable(value = "id") Long accessoryId,
 			@RequestHeader("Authorization") String authorizationHeader) throws ResourceNotFoundException,
 			JsonParseException, JsonMappingException, ForbiddenException, IOException {
 		Accessories accessories = accessoriesRepository.findById(accessoryId)
 				.orElseThrow(() -> new ResourceNotFoundException("Accessory not found :: " + accessoryId));
-		if (commonUtil.validateUserTokenRole(authorizationHeader, "Admin")) {
+		if (commonUtil.validateUserTokenRole(authorizationHeader, "Sales")) {
 			accessoriesRepository.delete(accessories);
 			Map<String, Boolean> response = new HashMap<>();
 			response.put("deleted", Boolean.TRUE);
