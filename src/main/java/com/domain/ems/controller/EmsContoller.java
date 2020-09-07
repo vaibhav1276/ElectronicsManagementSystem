@@ -215,7 +215,7 @@ public class EmsContoller {
 	}
 
 	// Accessories APIs
-	@PostMapping("/accessory")
+	@PostMapping("/accessories")
 	public Accessories addAccessory(@RequestBody Accessories accessories,
 			@RequestHeader("Authorization") String authorizationHeader) throws Exception {
 
