@@ -77,8 +77,6 @@ public class JwtUtil {
 			String payloadJson = new String(decoder.decode(parts[1]));
 			ObjectMapper om = new ObjectMapper();
 			Token token = om.readValue(payloadJson, Token.class);
-
-			logger.info("token body : " + payloadJson);
 			for (Role role : token.getRole()) {
 				if (role.getAuthority() != null) {
 					roleName = role.getAuthority();

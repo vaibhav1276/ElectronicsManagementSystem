@@ -30,11 +30,6 @@ public class MyUserDetailsService implements UserDetailsService {
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 		com.domain.ems.models.UserModel.User user = userRepository.findByUsername(username);
 		if (user != null) {
-			try {
-				logger.info("User Details : " + om.writeValueAsString(user));
-			} catch (JsonProcessingException e) {
-				e.printStackTrace();
-			}
 			SimpleGrantedAuthority authority = new SimpleGrantedAuthority(user.getRole());
 			List<SimpleGrantedAuthority> updatedAuthorities = new ArrayList<SimpleGrantedAuthority>();
 			updatedAuthorities.add(authority);
